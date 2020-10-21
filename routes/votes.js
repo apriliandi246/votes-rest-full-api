@@ -1,16 +1,47 @@
 "use strict";
 
 const router = require("express").Router();
-const validateId = require("../middleware/validationId");
+const mongoose = require("mongoose");
 const Vote = require("../models/votes");
 const { io } = require("../index");
+
+io.on("connection", (socket) => {
+   if (socket.connected === true) {
+      socket.on("voting", async ([data, id]) => {
+         const vote = await Vote.findByIdAndUpdate(id, data, {
+            new: true,
+         });
+
+         vote.save();
+
+         io.emit("voting", vote);
+      });
+   }
+
+   socket.on("voting", async ([data, id]) => {
+      const vote = await Vote.findByIdAndUpdate(id, data, {
+         new: true,
+      });
+
+      vote.save();
+
+      io.emit("voting", vote);
+   });
+});
 
 router.get("/", async (req, res) => {
    const votes = await Vote.find().sort({ createdAt: "desc" });
    res.send(votes);
 });
 
-router.get("/:id", validateId, async (req, res) => {
+router.get("/:id", async (req, res) => {
+   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).send({
+         message: "Invalid ID....",
+         status: res.statusCode,
+      });
+   }
+
    const vote = await Vote.findById(req.params.id);
    checkData(vote, res);
    res.send(vote);
@@ -34,6 +65,13 @@ router.post("/", async (req, res) => {
 });
 
 router.put("/:id", async (req, res) => {
+   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).send({
+         message: "Invalid ID....",
+         status: res.statusCode,
+      });
+   }
+
    const vote = await Vote.findByIdAndUpdate(
       req.params.id,
       {
@@ -52,13 +90,17 @@ router.put("/:id", async (req, res) => {
 
    await vote.save();
 
-   res.send({
-      message: "Vote has updated....",
-      status: res.statusCode,
-   });
+   res.send(vote);
 });
 
 router.delete("/:id", async (req, res) => {
+   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).send({
+         message: "Invalid ID....",
+         status: res.statusCode,
+      });
+   }
+
    const vote = await Vote.findByIdAndDelete(req.params.id);
 
    checkData(vote, res);
