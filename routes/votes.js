@@ -29,9 +29,28 @@ io.on("connection", (socket) => {
    });
 });
 
+// get all votes, that vote have not already voted
 router.get("/", async (req, res) => {
    const votes = await Vote.find().sort({ createdAt: "desc" });
-   res.send(votes);
+   const result = votes.filter(
+      (vote) =>
+         vote.object1.totalVotes !== vote.maximumVote &&
+         vote.object2.totalVotes !== vote.maximumVote
+   );
+
+   res.send(result);
+});
+
+// get all votes, that vote have already voted
+router.get("/voted", async (req, res) => {
+   const votes = await Vote.find().sort({ createdAt: "desc" });
+   const result = votes.filter(
+      (vote) =>
+         vote.object1.totalVotes === vote.maximumVote ||
+         vote.object2.totalVotes === vote.maximumVote
+   );
+
+   res.send(result);
 });
 
 router.get("/:id", async (req, res) => {
